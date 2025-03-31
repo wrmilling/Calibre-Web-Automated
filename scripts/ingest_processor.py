@@ -53,7 +53,7 @@ class NewBookProcessor:
 
         # Create the tmp_conversion_dir if it does not already exist
         Path(self.tmp_conversion_dir).mkdir(exist_ok=True)
-        
+
         self.filepath = filepath # path of the book we're targeting
         self.filename = os.path.basename(filepath)
         self.is_target_format = bool(self.filepath.endswith(self.target_format))
@@ -138,7 +138,7 @@ class NewBookProcessor:
             "supported formats to epub using the Calibre's conversion tools & then use Kepubify to produce your desired kepubs. Obviously multi-step conversions aren't ideal"
             "so if you notice issues with your converted files, bare in mind starting with epubs will ensure the best possible results***\n", flush=True)
             convert_successful, converted_filepath = self.convert_book(self.input_format, end_format="epub") # type: ignore
-            
+
         if convert_successful:
             converted_filepath = Path(converted_filepath)
             target_filepath = f"{self.tmp_conversion_dir}{converted_filepath.stem}.kepub"
@@ -182,7 +182,10 @@ class NewBookProcessor:
         import_path = Path(book_path)
         import_filename = os.path.basename(book_path)
         try:
-            subprocess.run(["calibredb", "add", book_path, "--automerge", "new_record", f"--library-path={self.library_dir}"], check=True)
+            # Ensure the home of user abc is used. This enables persistent plugins. This is a relative hacky way and should be done better in the future
+            env = os.environ.copy()
+            env["HOME"] = "/config"
+            subprocess.run(["calibredb", "add", book_path, "--automerge", "new_record", f"--library-path={self.library_dir}"], check=True, env=env)
             print(f"[ingest-processor] Added {import_path.stem} to Calibre database", flush=True)
 
             if self.cwa_settings['auto_backup_imports']:
@@ -254,7 +257,7 @@ def main(filepath=sys.argv[1]):
                     convert_successful, converted_filepath = nbp.convert_to_kepub()
                 else: # File is not in the convert ignore list and target is not kepub, so we start the regular conversion process
                     convert_successful, converted_filepath = nbp.convert_book()
-                    
+
                 if convert_successful: # If previous conversion process was successful, remove tmp files and import into library
                     nbp.add_book_to_library(converted_filepath) # type: ignore
 
